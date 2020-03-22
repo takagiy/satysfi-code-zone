@@ -33,7 +33,7 @@ end = struct
     let char-width = get-natural-width (read-inline ctx {0}) in
     ctx
       |> set-space-ratio (char-width /' font-size) 0. 0.
-      |> set-paragraph-margin 2pt 2pt
+      |> set-paragraph-margin (font-size *' 0.25) 0pt
 
 
   let-block ctx +code-zone code =
