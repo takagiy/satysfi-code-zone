@@ -1,0 +1,48 @@
+@require: pervasives
+
+module CodeZone : sig
+  direct +code-zone : [string] block-cmd
+end = struct
+  let eol = string-unexplode [0x0A]
+
+  let split-by-delimiter d s =
+    let-rec aux maxlen len =
+      let sub = string-sub s in
+      if len >= maxlen then
+        (s, None)
+      else if string-same (sub len 1) d then
+        ((sub 0 len), Some(sub (len + 1) (maxlen - len - 1)))
+      else
+        aux maxlen (len + 1)
+    in
+      aux (string-length s) 0
+
+  let-rec string-lines s =
+    match split-by-delimiter eol s with
+    | (head, Some(tail)) -> head :: string-lines tail
+    | (head, None)       -> [ head ]
+
+  let ( => ) f g x = g (f x)
+
+  let make-context ctx =
+    let ctx = ctx
+      |> set-font Latin (`lmmono`,  1., 0.)
+      |> set-hyphen-penalty 100000
+    in
+    let font-size = get-font-size ctx in
+    let char-width = get-natural-width (read-inline ctx {0}) in
+    ctx
+      |> set-space-ratio (char-width /' font-size) 0. 0.
+      |> set-paragraph-margin 2pt 2pt
+
+
+  let-block ctx +code-zone code =
+    let ctx = make-context ctx in
+    string-lines code
+      |> List.mapi (fun n ->
+        (fun line -> arabic n ^ `|`  ^ line)
+          => embed-string
+          => (fun t -> read-inline ctx t ++ inline-fil)
+          => line-break true true ctx)
+      |> List.fold-left (+++) block-nil
+end

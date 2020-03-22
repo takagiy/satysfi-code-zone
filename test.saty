@@ -1,0 +1,19 @@
+@require: stdjareport
+@import: src/code-zone
+
+document (|
+  title = {satysfi-code-zone-test};
+  author = {takagiy};
+|) '<
+  +code-zone(#``
+  let-block ctx +code-zone code =
+    let ctx = make-context ctx in
+    string-lines code
+      |> List.mapi (fun n ->
+        (fun line -> arabic n ^ `|`  ^ line)
+          => embed-string
+          => (fun t -> read-inline ctx t ++ inline-fil)
+          => line-break true true ctx)
+      |> List.fold-left (+++) block-nil
+  ``#);
+>
