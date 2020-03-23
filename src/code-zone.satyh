@@ -31,7 +31,7 @@ end = struct
     number-sep-text = {\ };
     number-font = None;
     number-frame = VDecoSet.empty;
-    code-sep = 0pt;
+    code-sep = 2pt;
     code-font = (`lmmono`, 1., 0.);
     code-frame = VDecoSet.simple-frame-stroke 0.5pt Color.black;
   |)
@@ -131,9 +131,11 @@ end = struct
     pre#code-lines
       |> drop-empty-lines
       |> List.mapi (fun number code-line -> (
-        let horz-code-line = code-line
-          |> embed-string
-          |> read-inline code-context
+        let horz-code-line =
+          inline-skip (sty#code-sep) ++
+            (code-line
+              |> embed-string
+              |> read-inline code-context)
         in
         let horz-number =
           make-number number-context sty pre#number-width number
