@@ -6,10 +6,13 @@
 @import: sized-list
 
 type code-zone-style = (|
-  sep : inline-text;
+  sep : length;
   frame : deco-set;
+  code-sep : length;
   code-font : string * float * float;
   code-frame : deco-set;
+  number-sep : length;
+  number-sep-text : inline-text;
   number-font : (string * float * float) option;
   number-frame: deco-set;
 |)
@@ -22,10 +25,13 @@ end = struct
   let eol = string-unexplode [0x0A]
 
   let default-style = (|
-    sep = {\ };
+    sep = 2pt;
     frame = VDecoSet.empty;
+    code-sep = 0pt;
     code-font = (`lmmono`, 1., 0.);
     code-frame = VDecoSet.simple-frame-stroke 0.5pt Color.black;
+    number-sep = 0pt;
+    number-sep-text = {\ };
     number-font = None;
     number-frame = VDecoSet.empty;
   |)
@@ -65,12 +71,12 @@ end = struct
       |> List.fold-left length-max 0pt
     in
     digit-width *' float (string-length (arabic number))
-      +' get-natural-width (read-inline ctx sty#sep)
+      +' get-natural-width (read-inline ctx sty#number-sep-text)
 
   let make-number ctx sty width number =
     let horz-number =
       let a = embed-string (arabic number) in
-      let b = sty#sep in
+      let b = sty#number-sep-text in
       read-inline ctx {#a;#b;}
     in
     inline-skip (width -' get-natural-width horz-number) ++ horz-number
@@ -91,21 +97,21 @@ end = struct
     in
     (number-context, code-context)
 
-  let compound-deco nw f n c (x, y) width height depth =
+  let compound-deco sty nw f n c (x, y) width height depth =
     List.concat [
       f (x, y) width height depth;
       n (x, y) nw height depth;
-      c (x +' nw, y) (width -' nw) height depth;
+      c (x +' nw +' sty#sep, y) (width -' nw -' sty#sep) height depth;
     ]
 
   let compound-deco-set number-width sty =
     match (sty#frame, sty#number-frame, sty#code-frame) with
     | ((f0, f1, f2, f3), (n0, n1, n2, n3), (c0, c1, c2, c3)) ->
       (
-        compound-deco number-width f0 n0 c0,
-        compound-deco number-width f1 n1 c1,
-        compound-deco number-width f2 n2 c2,
-        compound-deco number-width f3 n3 c3
+        compound-deco sty number-width f0 n0 c0,
+        compound-deco sty number-width f1 n1 c1,
+        compound-deco sty number-width f2 n2 c2,
+        compound-deco sty number-width f3 n3 c3
       )
 
   let code-scheme-prior-info ctx sty code =
@@ -139,7 +145,7 @@ end = struct
 
   let-block ctx +code-of sty code =
     let pre = code-scheme-prior-info ctx sty code in
-    block-frame-breakable ctx (2pt, 2pt, 2pt, 2pt)
+    block-frame-breakable ctx (sty#sep, sty#sep, sty#sep, sty#sep)
       (compound-deco-set pre#number-width sty)
         (fun ctx -> code-scheme pre ctx sty code)
 

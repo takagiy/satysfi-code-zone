@@ -34,7 +34,7 @@ document (|
 
   +code-of(|
     CodeZone.default-style with
-      sep = {:\ };
+      number-sep-text = {:\ };
       frame = VDecoSet.paper;
       code-frame = VDecoSet.empty;
   |)(``
