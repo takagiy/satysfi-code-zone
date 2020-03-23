@@ -147,7 +147,7 @@ end = struct
 
   let-block ctx +code-of sty code =
     let pre = code-scheme-prior-info ctx sty code in
-    block-frame-breakable ctx (sty#sep, sty#sep, sty#sep, sty#sep)
+    block-frame-breakable ctx (sty#sep, length-max sty#sep sty#code-sep, sty#sep, sty#sep)
       (compound-deco-set pre#number-width sty)
         (fun ctx -> code-scheme pre ctx sty code)
 
