@@ -56,6 +56,7 @@ end = struct
       |> List.fold-left length-max 0pt
     in
     digit-width *' float (string-length (arabic number))
+      +' get-natural-width (read-inline ctx sty#sep)
 
   let make-number ctx sty width number =
     let horz-number =
