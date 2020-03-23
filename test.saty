@@ -1,4 +1,5 @@
 @require: stdjareport
+@require: vdecoset
 @import: src/code-zone
 
 document (|
@@ -12,7 +13,9 @@ document (|
     let number-width =
       get-number-width sty code-line-count number-context
     in
+    let vert =
       code-lines
+        |> drop-empty-lines
         |> List.mapi (fun number code-line -> (
           let horz-code-line = code-line
             |> embed-string
@@ -24,11 +27,16 @@ document (|
           line-break true true code-context
             (horz-number ++ horz-code-line ++ inline-fil)))
         |> List.fold-left (+++) block-nil
+    in
+    block-frame-breakable ctx (0pt, 0pt, 0pt, 0pt)
+      (compound-deco-set number-width sty) (fun _ -> vert)
   ``);
 
   +code-of(|
     CodeZone.default-style with
       sep = {:\ };
+      frame = VDecoSet.paper;
+      code-frame = VDecoSet.empty;
   |)(``
   let-block ctx +code-of sty code =
     let (number-context, code-context) = make-context sty ctx in
@@ -36,7 +44,9 @@ document (|
     let number-width =
       get-number-width sty code-line-count number-context
     in
+    let vert =
       code-lines
+        |> drop-empty-lines
         |> List.mapi (fun number code-line -> (
           let horz-code-line = code-line
             |> embed-string
@@ -48,5 +58,9 @@ document (|
           line-break true true code-context
             (horz-number ++ horz-code-line ++ inline-fil)))
         |> List.fold-left (+++) block-nil
+    in
+    block-frame-breakable ctx (0pt, 0pt, 0pt, 0pt)
+      (compound-deco-set number-width sty) (fun _ -> vert)
   ``);
+
 >

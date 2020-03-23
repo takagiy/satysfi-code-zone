@@ -1,33 +1,33 @@
 @require: pervasives
+@require: vdecoset
 @require: option
 @require: color
 @require: list
-@require: gr
 @import: sized-list
 
-type style = (|
+type code-zone-style = (|
   sep : inline-text;
-  frame : point -> point -> graphics list;
+  frame : deco-set;
   code-font : string * float * float;
-  code-frame : point -> point -> graphics list;
+  code-frame : deco-set;
   number-font : (string * float * float) option;
-  number-frame: point -> point -> graphics list;
+  number-frame: deco-set;
 |)
 
 module CodeZone : sig
-  direct +code-of : [style; string] block-cmd
+  direct +code-of : [code-zone-style; string] block-cmd
   direct +code : [string] block-cmd
-  val default-style : style
+  val default-style : code-zone-style
 end = struct
   let eol = string-unexplode [0x0A]
 
   let default-style = (|
-    sep = {\|};
-    frame = fun _ _ -> [];
+    sep = {\ };
+    frame = VDecoSet.empty;
     code-font = (`lmmono`, 1., 0.);
-    code-frame = fun p q -> [ stroke 0.5pt Color.black (Gr.rectangle p q) ];
+    code-frame = VDecoSet.simple-frame-stroke 0.5pt Color.black;
     number-font = None;
-    number-frame = fun p q -> [];
+    number-frame = VDecoSet.empty;
   |)
 
   let split-by-delimiter d s =
@@ -47,6 +47,15 @@ end = struct
     match split-by-delimiter eol s with
     | (head, Some(tail)) -> head +: string-lines tail
     | (head, None)       -> head +: nil
+
+  let-rec drop-empty-lines lst =
+  match lst with
+  | x :: xs ->
+      if string-length x == 0 then
+        drop-empty-lines xs
+      else
+        lst
+  | []      -> []
 
   let ( => ) f g x = g (f x)
 
@@ -82,13 +91,32 @@ end = struct
     in
     (number-context, code-context)
 
+  let compound-deco nw f n c (x, y) width height depth =
+    List.concat [
+      f (x, y) width height depth;
+      n (x, y) nw height depth;
+      c (x +' nw, y) (width -' nw) height depth;
+    ]
+
+  let compound-deco-set number-width sty =
+    match (sty#frame, sty#number-frame, sty#code-frame) with
+    | ((f0, f1, f2, f3), (n0, n1, n2, n3), (c0, c1, c2, c3)) ->
+      (
+        compound-deco number-width f0 n0 c0,
+        compound-deco number-width f1 n1 c1,
+        compound-deco number-width f2 n2 c2,
+        compound-deco number-width f3 n3 c3
+      )
+
   let-block ctx +code-of sty code =
     let (number-context, code-context) = make-context sty ctx in
     let (code-line-count, code-lines) = string-lines code in
     let number-width =
       get-number-width sty code-line-count number-context
     in
+    let vert =
       code-lines
+        |> drop-empty-lines
         |> List.mapi (fun number code-line -> (
           let horz-code-line = code-line
             |> embed-string
@@ -100,6 +128,9 @@ end = struct
           line-break true true code-context
             (horz-number ++ horz-code-line ++ inline-fil)))
         |> List.fold-left (+++) block-nil
+    in
+    block-frame-breakable ctx (0pt, 0pt, 0pt, 0pt)
+      (compound-deco-set number-width sty) (fun _ -> vert)
 
   let-block +code code = '<+code-of(default-style)(code);>
 end
