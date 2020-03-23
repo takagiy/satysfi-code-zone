@@ -108,29 +108,40 @@ end = struct
         compound-deco number-width f3 n3 c3
       )
 
-  let-block ctx +code-of sty code =
-    let (number-context, code-context) = make-context sty ctx in
+  let code-scheme-prior-info ctx sty code =
+    let (number-context, _) = make-context sty ctx in
     let (code-line-count, code-lines) = string-lines code in
     let number-width =
       get-number-width sty code-line-count number-context
     in
-    let vert =
-      code-lines
-        |> drop-empty-lines
-        |> List.mapi (fun number code-line -> (
-          let horz-code-line = code-line
-            |> embed-string
-            |> read-inline code-context
-          in
-          let horz-number =
-            make-number number-context sty number-width number
-          in
-          line-break true true code-context
-            (horz-number ++ horz-code-line ++ inline-fil)))
-        |> List.fold-left (+++) block-nil
-    in
-    block-frame-breakable ctx (0pt, 0pt, 0pt, 0pt)
-      (compound-deco-set number-width sty) (fun _ -> vert)
+    (|
+      code-lines = code-lines;
+      number-width = number-width;
+    |)
+
+
+  let code-scheme pre ctx sty code =
+    let (number-context, code-context) = make-context sty ctx in
+    pre#code-lines
+      |> drop-empty-lines
+      |> List.mapi (fun number code-line -> (
+        let horz-code-line = code-line
+          |> embed-string
+          |> read-inline code-context
+        in
+        let horz-number =
+          make-number number-context sty pre#number-width number
+        in
+        line-break true true code-context
+          (horz-number ++ horz-code-line ++ inline-fil)))
+      |> List.fold-left (+++) block-nil
+
+
+  let-block ctx +code-of sty code =
+    let pre = code-scheme-prior-info ctx sty code in
+    block-frame-breakable ctx (2pt, 2pt, 2pt, 2pt)
+      (compound-deco-set pre#number-width sty)
+        (fun ctx -> code-scheme pre ctx sty code)
 
   let-block +code code = '<+code-of(default-style)(code);>
 end
