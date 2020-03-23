@@ -1,0 +1,9 @@
+module SizedList : sig
+  val nil : int * 'a list
+  val cons : 'a -> int * 'a list -> int * 'a list
+  val ( +: ) : 'a -> int * 'a list -> int * 'a list
+end = struct
+  let nil = (0, [])
+  let cons car (length, cdr) = (length + 1, car :: cdr)
+  let ( +: ) = cons
+end

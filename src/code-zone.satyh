@@ -1,9 +1,34 @@
 @require: pervasives
+@require: option
+@require: color
+@require: list
+@require: gr
+@import: sized-list
+
+type style = (|
+  sep : inline-text;
+  frame : point -> point -> graphics list;
+  code-font : string * float * float;
+  code-frame : point -> point -> graphics list;
+  number-font : (string * float * float) option;
+  number-frame: point -> point -> graphics list;
+|)
 
 module CodeZone : sig
-  direct +code-zone : [string] block-cmd
+  direct +code-of : [style; string] block-cmd
+  direct +code : [string] block-cmd
+  val default-style : style
 end = struct
   let eol = string-unexplode [0x0A]
+
+  let default-style = (|
+    sep = {\|};
+    frame = fun _ _ -> [];
+    code-font = (`lmmono`, 1., 0.);
+    code-frame = fun p q -> [ stroke 0.5pt Color.black (Gr.rectangle p q) ];
+    number-font = None;
+    number-frame = fun p q -> [];
+  |)
 
   let split-by-delimiter d s =
     let-rec aux maxlen len =
@@ -18,31 +43,62 @@ end = struct
       aux (string-length s) 0
 
   let-rec string-lines s =
+    open SizedList in
     match split-by-delimiter eol s with
-    | (head, Some(tail)) -> head :: string-lines tail
-    | (head, None)       -> [ head ]
+    | (head, Some(tail)) -> head +: string-lines tail
+    | (head, None)       -> head +: nil
 
   let ( => ) f g x = g (f x)
 
-  let make-context ctx =
-    let ctx = ctx
-      |> set-font Latin (`lmmono`,  1., 0.)
-      |> set-hyphen-penalty 100000
+  let get-number-width sty number ctx =
+    let digit-width = [{0}; {1}; {2}; {3}; {4}; {5}; {6}; {7}; {8}; {9}]
+      |> List.map (read-inline ctx => get-natural-width)
+      |> List.fold-left length-max 0pt
     in
+    digit-width *' float (string-length (arabic number))
+
+  let make-number ctx sty width number =
+    let horz-number =
+      let a = embed-string (arabic number) in
+      let b = sty#sep in
+      read-inline ctx {#a;#b;}
+    in
+    inline-skip (width -' get-natural-width horz-number) ++ horz-number
+
+  let make-context sty ctx =
     let font-size = get-font-size ctx in
-    let char-width = get-natural-width (read-inline ctx {0}) in
-    ctx
-      |> set-space-ratio (char-width /' font-size) 0. 0.
-      |> set-paragraph-margin (font-size *' 0.25) 0pt
+    let ctx = ctx |> set-paragraph-margin (font-size *' 0.25) 0pt in
+    let code-context =
+      let ctx = ctx
+        |> set-font Latin sty#code-font
+        |> set-hyphen-penalty 100000
+      in
+      let char-width = get-natural-width (read-inline ctx {0}) in
+      ctx |> set-space-ratio (char-width /' font-size) 0. 0.
+    in
+    let number-context = ctx
+      |> set-font Latin (Option.from (get-font Latin ctx) sty#number-font)
+    in
+    (number-context, code-context)
 
+  let-block ctx +code-of sty code =
+    let (number-context, code-context) = make-context sty ctx in
+    let (code-line-count, code-lines) = string-lines code in
+    let number-width =
+      get-number-width sty code-line-count number-context
+    in
+      code-lines
+        |> List.mapi (fun number code-line -> (
+          let horz-code-line = code-line
+            |> embed-string
+            |> read-inline code-context
+          in
+          let horz-number =
+            make-number number-context sty number-width number
+          in
+          line-break true true code-context
+            (horz-number ++ horz-code-line ++ inline-fil)))
+        |> List.fold-left (+++) block-nil
 
-  let-block ctx +code-zone code =
-    let ctx = make-context ctx in
-    string-lines code
-      |> List.mapi (fun n ->
-        (fun line -> arabic n ^ `|`  ^ line)
-          => embed-string
-          => (fun t -> read-inline ctx t ++ inline-fil)
-          => line-break true true ctx)
-      |> List.fold-left (+++) block-nil
+  let-block +code code = '<+code-of(default-style)(code);>
 end

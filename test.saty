@@ -5,15 +5,48 @@ document (|
   title = {satysfi-code-zone-test};
   author = {takagiy};
 |) '<
-  +code-zone(#``
-  let-block ctx +code-zone code =
-    let ctx = make-context ctx in
-    string-lines code
-      |> List.mapi (fun n ->
-        (fun line -> arabic n ^ `|`  ^ line)
-          => embed-string
-          => (fun t -> read-inline ctx t ++ inline-fil)
-          => line-break true true ctx)
-      |> List.fold-left (+++) block-nil
-  ``#);
+  +CodeZone.code(``
+  let-block ctx +code-of sty code =
+    let (number-context, code-context) = make-context sty ctx in
+    let (code-line-count, code-lines) = string-lines code in
+    let number-width =
+      get-number-width sty code-line-count number-context
+    in
+      code-lines
+        |> List.mapi (fun number code-line -> (
+          let horz-code-line = code-line
+            |> embed-string
+            |> read-inline code-context
+          in
+          let horz-number =
+            make-number number-context sty number-width number
+          in
+          line-break true true code-context
+            (horz-number ++ horz-code-line ++ inline-fil)))
+        |> List.fold-left (+++) block-nil
+  ``);
+
+  +code-of(|
+    CodeZone.default-style with
+      sep = {:\ };
+  |)(``
+  let-block ctx +code-of sty code =
+    let (number-context, code-context) = make-context sty ctx in
+    let (code-line-count, code-lines) = string-lines code in
+    let number-width =
+      get-number-width sty code-line-count number-context
+    in
+      code-lines
+        |> List.mapi (fun number code-line -> (
+          let horz-code-line = code-line
+            |> embed-string
+            |> read-inline code-context
+          in
+          let horz-number =
+            make-number number-context sty number-width number
+          in
+          line-break true true code-context
+            (horz-number ++ horz-code-line ++ inline-fil)))
+        |> List.fold-left (+++) block-nil
+  ``);
 >
