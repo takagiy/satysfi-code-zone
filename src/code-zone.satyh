@@ -8,13 +8,13 @@
 type code-zone-style = (|
   sep : length;
   frame : deco-set;
-  code-sep : length;
-  code-font : string * float * float;
-  code-frame : deco-set;
   number-sep : length;
   number-sep-text : inline-text;
   number-font : (string * float * float) option;
   number-frame: deco-set;
+  code-sep : length;
+  code-font : string * float * float;
+  code-frame : deco-set;
 |)
 
 module CodeZone : sig
@@ -27,13 +27,13 @@ end = struct
   let default-style = (|
     sep = 2pt;
     frame = VDecoSet.empty;
-    code-sep = 0pt;
-    code-font = (`lmmono`, 1., 0.);
-    code-frame = VDecoSet.simple-frame-stroke 0.5pt Color.black;
     number-sep = 0pt;
     number-sep-text = {\ };
     number-font = None;
     number-frame = VDecoSet.empty;
+    code-sep = 0pt;
+    code-font = (`lmmono`, 1., 0.);
+    code-frame = VDecoSet.simple-frame-stroke 0.5pt Color.black;
   |)
 
   let split-by-delimiter d s =
