@@ -110,7 +110,7 @@ end = struct
           ++ horz-number-sep-text
       in
       ctx
-        |> set-every-word-break inline-fil (horz-empty-number ++ inline-skip sty#code-sep)
+        |> set-every-word-break inline-nil (horz-empty-number ++ inline-skip sty#code-sep)
 
     in
     (number-context, code-context)
