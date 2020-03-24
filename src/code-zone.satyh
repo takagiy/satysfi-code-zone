@@ -7,7 +7,7 @@
 @import: seqsplit
 
 type code-zone-wrap-method =
-  BuiltIn | Free | WrapMethod of context -> string -> inline-boxes
+  Textual | Free | WrapMethod of context -> string -> inline-boxes
 
 type code-zone-style = (|
   sep : length;
@@ -201,7 +201,7 @@ end = struct
           ++ inline-skip padr
 
   let-rec resolve-wrap-method
-    | ctx (BuiltIn)       = embed-string => read-inline ctx
+    | ctx (Textual)       = embed-string => read-inline ctx
     | ctx (Free)          = Seqsplit.embed-string-breakable ctx
     | ctx (WrapMethod(m)) = m ctx
 
