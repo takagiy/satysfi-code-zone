@@ -81,19 +81,31 @@ end = struct
     in
     inline-skip (width -' get-natural-width horz-number) ++ horz-number
 
-  let make-context sty ctx =
+  let make-context sty number-width ctx =
     let font-size = get-font-size ctx in
     let ctx = ctx |> set-paragraph-margin (font-size *' 0.25) 0pt in
+    let number-context = ctx
+      |> set-font Latin (Option.from (get-font Latin ctx) sty#number-font)
+    in
     let code-context =
       let ctx = ctx
         |> set-font Latin sty#code-font
         |> set-hyphen-penalty 100000
       in
-      let char-width = get-natural-width (read-inline ctx {0}) in
-      ctx |> set-space-ratio (char-width /' font-size) 0. 0.
-    in
-    let number-context = ctx
-      |> set-font Latin (Option.from (get-font Latin ctx) sty#number-font)
+      let ctx =
+        let char-width = get-natural-width (read-inline ctx {0}) in
+          ctx |> set-space-ratio (char-width /' font-size) 0. 0.
+      in
+      let horz-empty-number =
+        let horz-number-sep-text =
+          read-inline number-context sty#number-sep-text
+        in
+        inline-skip (number-width -' get-natural-width horz-number-sep-text)
+          ++ horz-number-sep-text
+      in
+      ctx
+        |> set-every-word-break inline-fil (horz-empty-number ++ inline-skip sty#code-sep)
+
     in
     (number-context, code-context)
 
@@ -115,7 +127,7 @@ end = struct
       )
 
   let code-scheme-prior-info ctx sty code =
-    let (number-context, _) = make-context sty ctx in
+    let (number-context, _) = make-context sty 0pt ctx in
     let (code-line-count, code-lines) = string-lines code in
     let number-width =
       get-number-width sty code-line-count number-context
@@ -127,7 +139,7 @@ end = struct
 
 
   let code-scheme pre ctx sty code =
-    let (number-context, code-context) = make-context sty ctx in
+    let (number-context, code-context) = make-context sty pre#number-width ctx in
     pre#code-lines
       |> drop-empty-lines
       |> List.mapi (fun number code-line -> (
