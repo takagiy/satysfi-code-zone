@@ -5,11 +5,13 @@ module Seqsplit: sig
 
   direct \seqsplit : [string] inline-cmd
 end = struct
-  let-rec string-map f s =
-    let l = string-length s in
-    if l == 0 then []
-    else
-      f (string-sub s 0 1) :: string-map f (string-sub s 1 (l - 1))
+  let string-map f s =
+    let-rec aux l s =
+      if l == 0 then []
+      else
+        f (string-sub s 0 1) :: aux (l - 1) (string-sub s 1 (l - 1))
+    in
+    aux (string-length s) s
 
   let tokenize ctx s =
     let s = read-inline ctx (embed-string s) in
