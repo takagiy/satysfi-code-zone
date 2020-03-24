@@ -74,6 +74,7 @@ end = struct
     in
     digit-width *' float (string-length (arabic number))
       +' get-natural-width (read-inline ctx sty#number-sep-text)
+        +' sty#number-sep
 
   let make-number ctx sty width number =
     let horz-number =
@@ -81,7 +82,9 @@ end = struct
       let b = sty#number-sep-text in
       read-inline ctx {#a;#b;}
     in
-    inline-skip (width -' get-natural-width horz-number) ++ horz-number
+    inline-skip (width -' get-natural-width horz-number -' sty#number-sep)
+      ++ horz-number
+        ++ inline-skip sty#number-sep
 
 %  let make-context sty number-width ctx =
 %    let font-size = get-font-size ctx in
