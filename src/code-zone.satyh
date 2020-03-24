@@ -83,6 +83,39 @@ end = struct
     in
     inline-skip (width -' get-natural-width horz-number) ++ horz-number
 
+%  let make-context sty number-width ctx =
+%    let font-size = get-font-size ctx in
+%    let ctx = ctx
+%      |> set-paragraph-margin (font-size *' 0.25) 0pt
+%      |> set-min-gap-of-lines (font-size *' 0.)
+%      |> set-leading (font-size *' 1.)
+%    in
+%    let number-context = ctx
+%      |> set-font Latin (Option.from (get-font Latin ctx) sty#number-font)
+%    in
+%    let code-context =
+%      let ctx = ctx
+%        |> set-font Latin sty#code-font
+%        |> set-hyphen-penalty 100000
+%      in
+%      let ctx =
+%        let char-width = get-natural-width (read-inline ctx {0}) in
+%          ctx |> set-space-ratio (char-width /' font-size) 0. 0.
+%      in
+%      let horz-empty-number =
+%        let horz-number-sep-text =
+%          read-inline number-context sty#number-sep-text-trailing
+%        in
+%        inline-skip (number-width -' get-natural-width horz-number-sep-text)
+%          ++ horz-number-sep-text
+%      in
+%      ctx
+%        |> set-every-word-break inline-nil (horz-empty-number ++ inline-skip sty#code-sep)
+%
+%    in
+%    (number-context, code-context)
+
+
   let make-context sty number-width ctx =
     let font-size = get-font-size ctx in
     let ctx = ctx
@@ -98,20 +131,8 @@ end = struct
         |> set-font Latin sty#code-font
         |> set-hyphen-penalty 100000
       in
-      let ctx =
-        let char-width = get-natural-width (read-inline ctx {0}) in
-          ctx |> set-space-ratio (char-width /' font-size) 0. 0.
-      in
-      let horz-empty-number =
-        let horz-number-sep-text =
-          read-inline number-context sty#number-sep-text-trailing
-        in
-        inline-skip (number-width -' get-natural-width horz-number-sep-text)
-          ++ horz-number-sep-text
-      in
-      ctx
-        |> set-every-word-break inline-nil (horz-empty-number ++ inline-skip sty#code-sep)
-
+      let char-width = get-natural-width (read-inline ctx {0}) in
+      ctx |> set-space-ratio (char-width /' font-size) 0. 0.
     in
     (number-context, code-context)
 
@@ -144,16 +165,46 @@ end = struct
     |)
 
 
+%  let code-scheme pre ctx sty code =
+%    let (number-context, code-context) = make-context sty pre#number-width ctx in
+%    pre#code-lines
+%      |> drop-empty-lines
+%      |> List.mapi (fun number code-line -> (
+%        let horz-code-line =
+%          inline-skip (sty#code-sep) ++
+%            (code-line
+%              |> embed-string
+%              |> read-inline code-context)
+%        in
+%        let horz-number =
+%          make-number number-context sty pre#number-width number
+%        in
+%        line-break true true code-context
+%          (horz-number ++ horz-code-line ++ inline-fil)))
+%      |> List.fold-left (+++) block-nil
+
+  let append-fil horz = horz ++ inline-fil
+
+  let line-breake-subpage ctx width (padl, padr) horz =
+    inline-skip padl
+      ++ embed-block-top ctx (width -' padl -' padr)
+        (fun ctx -> line-break true true ctx horz)
+          ++ inline-skip padr
+
   let code-scheme pre ctx sty code =
-    let (number-context, code-context) = make-context sty pre#number-width ctx in
+    let (number-context, code-context) =
+      make-context sty pre#number-width ctx
+    in
     pre#code-lines
       |> drop-empty-lines
       |> List.mapi (fun number code-line -> (
         let horz-code-line =
-          inline-skip (sty#code-sep) ++
-            (code-line
-              |> embed-string
-              |> read-inline code-context)
+          code-line
+            |> embed-string
+            |> read-inline code-context
+            |> append-fil
+            |> line-breake-subpage code-context
+              (get-text-width ctx -' pre#number-width) (sty#code-sep, sty#code-sep)
         in
         let horz-number =
           make-number number-context sty pre#number-width number
@@ -161,7 +212,6 @@ end = struct
         line-break true true code-context
           (horz-number ++ horz-code-line ++ inline-fil)))
       |> List.fold-left (+++) block-nil
-
 
   let-block ctx +code-of sty code =
     let pre = code-scheme-prior-info ctx sty code in
