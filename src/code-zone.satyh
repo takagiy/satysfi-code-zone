@@ -10,6 +10,7 @@ type code-zone-style = (|
   frame : deco-set;
   number-sep : length;
   number-sep-text : inline-text;
+  number-sep-text-trailing : inline-text;
   number-font : (string * float * float) option;
   number-frame: deco-set;
   code-sep : length;
@@ -29,6 +30,7 @@ end = struct
     frame = VDecoSet.empty;
     number-sep = 0pt;
     number-sep-text = {\ };
+    number-sep-text-trailing = {};
     number-font = None;
     number-frame = VDecoSet.empty;
     code-sep = 2pt;
@@ -102,7 +104,7 @@ end = struct
       in
       let horz-empty-number =
         let horz-number-sep-text =
-          read-inline number-context sty#number-sep-text
+          read-inline number-context sty#number-sep-text-trailing
         in
         inline-skip (number-width -' get-natural-width horz-number-sep-text)
           ++ horz-number-sep-text
