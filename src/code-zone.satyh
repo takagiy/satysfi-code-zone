@@ -4,10 +4,15 @@
 @require: color
 @require: list
 @import: sized-list
+@import: seqsplit
+
+type code-zone-wrap-method =
+  BuiltIn | Free | WrapMethod of context -> string -> inline-boxes
 
 type code-zone-style = (|
   sep : length;
   frame : deco-set;
+  wrap-method : code-zone-wrap-method;
   number-sep : length;
   number-sep-text : inline-text;
   number-sep-text-trailing : inline-text;
@@ -28,6 +33,7 @@ end = struct
   let default-style = (|
     sep = 2pt;
     frame = VDecoSet.empty;
+    wrap-method = Free;
     number-sep = 0pt;
     number-sep-text = {\ };
     number-sep-text-trailing = {};
@@ -194,6 +200,11 @@ end = struct
         (fun ctx -> line-break true true ctx horz)
           ++ inline-skip padr
 
+  let-rec resolve-wrap-method
+    | ctx (BuiltIn)       = embed-string => read-inline ctx
+    | ctx (Free)          = Seqsplit.embed-string-breakable ctx
+    | ctx (WrapMethod(m)) = m ctx
+
   let code-scheme pre ctx sty code =
     let (number-context, code-context) =
       make-context sty pre#number-width ctx
@@ -203,8 +214,7 @@ end = struct
       |> List.mapi (fun number code-line -> (
         let horz-code-line =
           code-line
-            |> embed-string
-            |> read-inline code-context
+            |> resolve-wrap-method code-context sty#wrap-method
             |> append-fil
             |> line-breake-subpage code-context
               (get-text-width ctx -' pre#number-width) (sty#code-sep, sty#code-sep)
