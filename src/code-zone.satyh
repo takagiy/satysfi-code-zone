@@ -2,6 +2,7 @@
 @require: vdecoset
 @require: option
 @require: color
+@require: math
 @require: list
 @import: sized-list
 @import: seqsplit
@@ -28,6 +29,17 @@ module CodeZone : sig
   direct +code : [string] block-cmd
   val default-style : code-zone-style
 end = struct
+  let-inline ctx \as-wide-as norm it =
+    let horz-norm = read-inline ctx norm in
+    let horz-it = read-inline ctx it in
+    let width-diff =
+      let norm-width = get-natural-width horz-norm in
+      let it-width = get-natural-width horz-it in
+      norm-width -' it-width
+    in
+    inline-skip (width-diff *' 0.5) ++ horz-it
+      ++ inline-skip (width-diff *' 0.5)
+
   let eol = string-unexplode [0x0A]
 
   let default-style = (|
@@ -35,13 +47,13 @@ end = struct
     frame = VDecoSet.empty;
     wrap-method = Free;
     number-sep = 0pt;
-    number-sep-text = {\ };
+    number-sep-text = {:\ };
     number-sep-text-trailing = {};
     number-font = None;
     number-frame = VDecoSet.empty;
     code-sep = 2pt;
     code-font = (`lmmono`, 1., 0.);
-    code-frame = VDecoSet.simple-frame-stroke 0.5pt Color.black;
+    code-frame = VDecoSet.empty; %VDecoSet.simple-frame-stroke 0.5pt Color.black;
   |)
 
   let split-by-delimiter d s =
@@ -73,6 +85,12 @@ end = struct
 
   let ( => ) f g x = g (f x)
 
+  let-rec fold-left-n n f zero elem =
+    if n == 0 then
+      zero
+    else
+      f (fold-left-n (n - 1) f zero elem) elem
+
   let get-number-width sty number ctx =
     let digit-width = [{0}; {1}; {2}; {3}; {4}; {5}; {6}; {7}; {8}; {9}]
       |> List.map (read-inline ctx => get-natural-width)
@@ -82,15 +100,42 @@ end = struct
       +' get-natural-width (read-inline ctx sty#number-sep-text)
         +' sty#number-sep
 
-  let make-number ctx sty width number =
-    let horz-number =
-      let a = embed-string (arabic number) in
-      let b = sty#number-sep-text in
-      read-inline ctx {#a;#b;}
+  let line-breake-subpage ctx width (padl, padr) horz =
+    inline-skip padl
+      ++ embed-block-top ctx (width -' padl -' padr)
+        (fun ctx -> line-break true true ctx horz)
+          ++ inline-skip padr
+
+  let force-break ctx =
+    discretionary 0 (inline-skip ((get-text-width ctx) *' 2.)) inline-nil
+      inline-nil
+  %let force-break ctx = inline-nil
+
+  let make-number-vert ctx sty width trailing-depth number =
+    let horz-leading =
+      let horz-number =
+        let a = embed-string (arabic number) in
+        let b = sty#number-sep-text in
+        read-inline ctx {#a;#b;}
+      in
+      inline-skip (width -' get-natural-width horz-number -' sty#number-sep)
+        ++ horz-number
+          ++ inline-skip sty#number-sep
     in
-    inline-skip (width -' get-natural-width horz-number -' sty#number-sep)
-      ++ horz-number
-        ++ inline-skip sty#number-sep
+    let horz-trailing =
+      let horz-empty-number = read-inline ctx sty#number-sep-text-trailing in
+        inline-skip
+          (width -' get-natural-width horz-empty-number -' sty#number-sep)
+            ++ horz-empty-number ++ inline-skip sty#number-sep
+    in
+    let num-trailing = round (trailing-depth /' get-font-size ctx) in
+    fold-left-n num-trailing (+++) (line-break true true ctx horz-leading)
+      (line-break true true ctx horz-trailing)
+
+  let make-number ctx sty width trailing-depth number =
+    embed-block-top ctx width (fun ctx ->
+      make-number-vert ctx sty width trailing-depth number)
+
 
 %  let make-context sty number-width ctx =
 %    let font-size = get-font-size ctx in
@@ -194,12 +239,6 @@ end = struct
 
   let append-fil horz = horz ++ inline-fil
 
-  let line-breake-subpage ctx width (padl, padr) horz =
-    inline-skip padl
-      ++ embed-block-top ctx (width -' padl -' padr)
-        (fun ctx -> line-break true true ctx horz)
-          ++ inline-skip padr
-
   let-rec resolve-wrap-method
     | ctx (Textual)       = embed-string => read-inline ctx
     | ctx (Free)          = Seqsplit.embed-string-breakable ctx
@@ -217,10 +256,12 @@ end = struct
             |> resolve-wrap-method code-context sty#wrap-method
             |> append-fil
             |> line-breake-subpage code-context
-              (get-text-width ctx -' pre#number-width) (sty#code-sep, sty#code-sep)
+                (get-text-width ctx -' pre#number-width)
+                  (sty#code-sep, sty#code-sep)
         in
         let horz-number =
-          make-number number-context sty pre#number-width number
+          let (_, _, trailing-depth) = get-natural-metrics horz-code-line in
+          make-number number-context sty pre#number-width trailing-depth number
         in
         line-break true true code-context
           (horz-number ++ horz-code-line ++ inline-fil)))
@@ -228,9 +269,10 @@ end = struct
 
   let-block ctx +code-of sty code =
     let pre = code-scheme-prior-info ctx sty code in
-    block-frame-breakable ctx (sty#sep, length-max sty#sep sty#code-sep, sty#sep, sty#sep)
-      (compound-deco-set pre#number-width sty)
-        (fun ctx -> code-scheme pre ctx sty code)
+    block-frame-breakable ctx
+      (sty#sep, length-max sty#sep sty#code-sep, sty#sep, sty#sep)
+        (compound-deco-set pre#number-width sty)
+          (fun ctx -> code-scheme pre ctx sty code)
 
   let-block +code code = '<+code-of(default-style)(code);>
 end
