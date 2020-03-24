@@ -83,7 +83,11 @@ end = struct
 
   let make-context sty number-width ctx =
     let font-size = get-font-size ctx in
-    let ctx = ctx |> set-paragraph-margin (font-size *' 0.25) 0pt in
+    let ctx = ctx
+      |> set-paragraph-margin (font-size *' 0.25) 0pt
+      |> set-min-gap-of-lines (font-size *' 0.)
+      |> set-leading (font-size *' 1.)
+    in
     let number-context = ctx
       |> set-font Latin (Option.from (get-font Latin ctx) sty#number-font)
     in
