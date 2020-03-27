@@ -31,7 +31,8 @@ module CodeZone : sig
   direct +code-of : [code-zone-style; string] block-cmd
   direct +code : [string] block-cmd
   val default-style : code-zone-style
-  val frame : length -> color -> 'a -> deco-set
+  val fill : color -> deco-set
+  val frame : length -> color -> color ?-> 'a -> deco-set
     constraint 'a :: (|
       left : bool;
       right : bool;
@@ -45,14 +46,21 @@ end = struct
 
   let quad-map2 f (a, b, c, d) (x, y, z, w) = (f a x, f b y, f c z, f d w)
 
-  let frame width color edges =
+  let fill color =
+    quad (fun (x, y) w h d -> [fill color (Gr.rectangle (x, y -' d) (x +' w, y +' h))])
+
+  let frame width color ?:fill-color edges =
     let compound lst =
       let none _ _ _ _ = [] in
       let empty = quad none in
-      let apply f (x, y) w h d = f (x, y +' h) (x +' w, y -' d) in
+      let apply f (x, y) w h d = f (x, y -' d) (x +' w, y +' h) in
       lst
         |> List.map (quad-map apply)
-        |> List.fold-left (quad-map2 (fun a b p w h d -> List.append (a p w h d) (b p w h d))) empty
+        |> List.fold-left
+          (quad-map2 (fun a b p w h d -> List.append (a p w h d) (b p w h d)))
+            (fill-color
+              |> Option.map fill
+              |> Option.from empty)
     in
     let none _ _ = [] in
     let empty = quad none in
