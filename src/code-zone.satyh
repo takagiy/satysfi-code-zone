@@ -95,19 +95,6 @@ end = struct
       edge-bottom;
     ]
 
-  let-inline ctx \as-wide-as norm it =
-    let horz-norm = read-inline ctx norm in
-    let horz-it = read-inline ctx it in
-    let width-diff =
-      let norm-width = get-natural-width horz-norm in
-      let it-width = get-natural-width horz-it in
-      norm-width -' it-width
-    in
-    inline-skip (width-diff *' 0.5) ++ horz-it
-      ++ inline-skip (width-diff *' 0.5)
-
-  let eol = string-unexplode [0x0A]
-
   let default-style = (|
     sep = 4pt;
     frame = VDecoSet.empty;
@@ -122,8 +109,26 @@ end = struct
     code-sep = 4pt;
     code-font = (`lmmono`, 1., 0.);
     code-color = None;
-    code-frame = VDecoSet.empty;
+    code-frame = frame 0.5pt Color.black (|
+      top = true;
+      bottom = true;
+      left = false;
+      right = false;
+    |);
   |)
+
+  let-inline ctx \as-wide-as norm it =
+    let horz-norm = read-inline ctx norm in
+    let horz-it = read-inline ctx it in
+    let width-diff =
+      let norm-width = get-natural-width horz-norm in
+      let it-width = get-natural-width horz-it in
+      norm-width -' it-width
+    in
+    inline-skip (width-diff *' 0.5) ++ horz-it
+      ++ inline-skip (width-diff *' 0.5)
+
+  let eol = string-unexplode [0x0A]
 
   let split-by-delimiter d s =
     let-rec aux maxlen len =
