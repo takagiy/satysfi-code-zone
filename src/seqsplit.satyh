@@ -15,7 +15,9 @@ end = struct
 
   let tokenize ctx s =
     let s = read-inline ctx (embed-string s) in
-    discretionary 100 s s inline-nil
+    discretionary 100 s
+      (s ++ inline-glue 0pt (get-natural-width s) (get-natural-width s))
+        inline-nil
 
   let embed-string-breakable ctx s =
     s |> string-map-fold (tokenize ctx) (++) inline-nil
