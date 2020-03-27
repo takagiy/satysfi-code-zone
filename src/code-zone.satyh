@@ -19,9 +19,11 @@ type code-zone-style = (|
   number-sep-text-trailing : inline-text;
   number-font : (string * float * float) option;
   number-font-scale : float;
+  number-color : color option;
   number-frame: deco-set;
   code-sep : length;
   code-font : string * float * float;
+  code-color : color option;
   code-frame : deco-set;
 |)
 
@@ -115,9 +117,11 @@ end = struct
     number-sep-text-trailing = {};
     number-font = None;
     number-font-scale = 0.5;
+    number-color = None;
     number-frame = VDecoSet.empty;
     code-sep = 4pt;
     code-font = (`lmmono`, 1., 0.);
+    code-color = None;
     code-frame = VDecoSet.empty;
   |)
 
@@ -205,10 +209,12 @@ end = struct
     let number-context = ctx
       |> set-font-size (get-font-size ctx *' sty#number-font-scale)
       |> set-font Latin (Option.from (get-font Latin ctx) sty#number-font)
+      |> set-text-color (Option.from (get-text-color ctx) sty#number-color)
     in
     let code-context =
       let ctx = ctx
         |> set-font Latin sty#code-font
+        |> set-text-color (Option.from (get-text-color ctx) sty#code-color)
         |> set-hyphen-penalty 100000
       in
       let char-width = get-natural-width (read-inline ctx {0}) in
