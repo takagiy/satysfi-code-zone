@@ -18,6 +18,7 @@ type code-zone-style = (|
   number-sep-text : inline-text;
   number-sep-text-trailing : inline-text;
   number-font : (string * float * float) option;
+  number-font-scale : float;
   number-frame: deco-set;
   code-sep : length;
   code-font : string * float * float;
@@ -50,10 +51,11 @@ end = struct
     number-sep-text = {};
     number-sep-text-trailing = {};
     number-font = None;
+    number-font-scale = 0.5;
     number-frame = VDecoSet.empty;
     code-sep = 2pt;
     code-font = (`lmmono`, 1., 0.);
-    code-frame = VDecoSet.empty; %VDecoSet.simple-frame-stroke 0.5pt Color.black;
+    code-frame = VDecoSet.empty;
   |)
 
   let split-by-delimiter d s =
@@ -110,7 +112,7 @@ end = struct
     discretionary 0 (inline-skip ((get-text-width ctx) *' 2.)) inline-nil
       inline-nil
 
-  let make-number-horz ctx sty width trailing-depth number =
+  let make-number-horz ctx code-ctx sty width trailing-depth number =
     let horz-leading =
       let horz-number =
         read-inline ctx (embed-string (arabic number)) ++ read-inline ctx
@@ -122,13 +124,13 @@ end = struct
       let horz-empty-number = read-inline ctx sty#number-sep-text-trailing in
       inline-fil ++ horz-empty-number
     in
-    let num-trailing = round (trailing-depth /' get-font-size ctx) in
+    let num-trailing = round (trailing-depth /' get-font-size code-ctx) in
     let ( +/+ ) l r = l ++ force-break ctx ++ r in
     fold-left-n num-trailing (+/+) horz-leading horz-trailing
 
-  let make-number ctx sty width trailing-depth number =
+  let make-number ctx code-ctx sty width trailing-depth number =
     line-break-subpage ctx width (0pt, sty#number-sep) (fun ctx ->
-      make-number-horz ctx sty width trailing-depth number)
+      make-number-horz ctx code-ctx sty width trailing-depth number)
 
   let make-context sty number-width ctx =
     let font-size = get-font-size ctx in
@@ -138,6 +140,7 @@ end = struct
       |> set-leading (font-size *' 1.)
     in
     let number-context = ctx
+      |> set-font-size (get-font-size ctx *' sty#number-font-scale)
       |> set-font Latin (Option.from (get-font Latin ctx) sty#number-font)
     in
     let code-context =
@@ -201,7 +204,8 @@ end = struct
         in
         let horz-number =
           let (_, _, trailing-depth) = get-natural-metrics horz-code-line in
-          make-number number-context sty pre#number-width trailing-depth number
+          make-number number-context code-context sty pre#number-width
+            trailing-depth number
         in
         line-break true true code-context
           (horz-number ++ horz-code-line ++ inline-fil)))
