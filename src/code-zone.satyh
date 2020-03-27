@@ -148,14 +148,14 @@ end = struct
     | (head, Some(tail)) -> head +: string-lines tail
     | (head, None)       -> head +: nil
 
-  let drop-empty-line lns =
+  let drop-empty-line (lns-count, lns) =
     match lns with
     | x :: xs ->
         if string-length x == 0 then
-          xs
+          (lns-count - 1, xs)
         else
-          lns
-    | []      -> []
+          (lns-count, lns)
+    | []      -> (lns-count, lns)
 
   let ( => ) f g x = g (f x)
 
@@ -246,7 +246,7 @@ end = struct
 
   let code-scheme-prior-info ctx sty code =
     let (number-context, _) = make-context sty 0pt ctx in
-    let (code-line-count, code-lines) = string-lines code in
+    let (code-line-count, code-lines) = string-lines code |> drop-empty-line in
     let number-width =
       get-number-width sty code-line-count number-context
     in
@@ -267,7 +267,6 @@ end = struct
       make-context sty pre#number-width ctx
     in
     pre#code-lines
-      |> drop-empty-line
       |> List.mapi (fun number code-line -> (
         let number = number + 1 in
         let horz-code-line =
