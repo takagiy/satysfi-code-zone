@@ -269,6 +269,7 @@ end = struct
     pre#code-lines
       |> drop-empty-line
       |> List.mapi (fun number code-line -> (
+        let number = number + 1 in
         let horz-code-line =
           line-break-subpage code-context
             (get-text-width ctx -' pre#number-width)
