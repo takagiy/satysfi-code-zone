@@ -5,11 +5,11 @@ module Seqsplit: sig
 
   direct \seqsplit : [string] inline-cmd
 end = struct
-  let string-map f s =
+  let string-map-fold f plus zero s =
     let-rec aux l s =
-      if l == 0 then []
+      if l == 0 then zero
       else
-        f (string-sub s 0 1) :: aux (l - 1) (string-sub s 1 (l - 1))
+        plus (f (string-sub s 0 1)) (aux (l - 1) (string-sub s 1 (l - 1)))
     in
     aux (string-length s) s
 
@@ -18,8 +18,7 @@ end = struct
     discretionary 0 s s inline-nil
 
   let embed-string-breakable ctx s =
-    s |> string-map (tokenize ctx)
-      |> List.fold-left (++) inline-nil
+    s |> string-map-fold (tokenize ctx) (++) inline-nil
 
   let-inline ctx \seqsplit s =
     embed-string-breakable ctx s
