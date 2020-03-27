@@ -4,8 +4,6 @@
 @require: color
 @require: math
 @require: list
-@require: base/string
-@require: base/debug
 @import: sized-list
 @import: seqsplit
 
@@ -48,8 +46,8 @@ end = struct
     sep = 2pt;
     frame = VDecoSet.empty;
     wrap-method = Free;
-    number-sep = 7pt;
-    number-sep-text = {:};
+    number-sep = 6pt;
+    number-sep-text = {};
     number-sep-text-trailing = {};
     number-font = None;
     number-frame = VDecoSet.empty;
@@ -98,34 +96,11 @@ end = struct
       |> List.map (read-inline ctx => get-natural-width)
       |> List.fold-left length-max 0pt
     in
-    let () = Debug.print (String.of-int number) in
-    let () = Debug.print (String.of-float (float (string-length (arabic number)))) in
-    let x = digit-width *' float (string-length (arabic number))
+    digit-width *' float (string-length (arabic number))
       +' get-natural-width (read-inline ctx sty#number-sep-text)
         +' sty#number-sep
-    in
-    let number = 10 in
-    let horz-leading =
-      let horz-number =
-        read-inline ctx (embed-string (arabic number)) ++ read-inline ctx sty#number-sep-text
-      in
-      inline-fil ++ horz-number
-    in
-    let () = Debug.print (`hl:` ^ String.of-length (get-natural-width horz-leading))
-    in
-    let () = Debug.print (`00{sep}skip:` ^ String.of-length x) in
-    let () =
-      let w = get-natural-width (inline-fil ++ read-inline ctx (embed-string (arabic 10)) ++ read-inline ctx sty#number-sep-text) in
-      Debug.print (`00{sep}:` ^ String.of-length w)
-    in x
 
   let line-break-subpage ctx width (padl, padr) horz =
-    inline-skip padl
-      ++ embed-block-top ctx (width -' padl -' padr)
-        (fun ctx -> line-break true true ctx horz)
-          ++ inline-skip padr
-
-  let line-break-subpage-2 ctx width (padl, padr) horz =
     inline-skip padl
       ++ embed-block-top ctx (width -' padl -' padr)
         (fun ctx -> line-break true true ctx (horz ctx))
@@ -134,17 +109,12 @@ end = struct
   let force-break ctx =
     discretionary 0 (inline-skip ((get-text-width ctx) *' 2.)) inline-nil
       inline-nil
-  %let force-break ctx = inline-nil
 
   let make-number-horz ctx sty width trailing-depth number =
-    let () = Debug.print (`n` ^ String.of-int number)
-    in
     let horz-leading =
       let horz-number =
-        read-inline ctx (embed-string (arabic number)) ++ read-inline ctx sty#number-sep-text
-        %let a = embed-string (arabic number) in
-        %let b = sty#number-sep-text in
-        %read-inline ctx {#a;#b;}
+        read-inline ctx (embed-string (arabic number)) ++ read-inline ctx
+          sty#number-sep-text
       in
       inline-fil ++ horz-number
     in
@@ -154,48 +124,11 @@ end = struct
     in
     let num-trailing = round (trailing-depth /' get-font-size ctx) in
     let ( +/+ ) l r = l ++ force-break ctx ++ r in
-    let () = Debug.print (`text width:` ^ String.of-length (get-text-width ctx)) in
-    let () = Debug.print (`horz-leading:` ^ String.of-length (get-natural-width horz-leading)) in
-    let x = fold-left-n num-trailing (+/+) horz-leading horz-trailing
-    in x
+    fold-left-n num-trailing (+/+) horz-leading horz-trailing
 
   let make-number ctx sty width trailing-depth number =
-    let () = Debug.print (String.of-length width) in
-    line-break-subpage-2 ctx width (0pt, sty#number-sep) (fun ctx ->
+    line-break-subpage ctx width (0pt, sty#number-sep) (fun ctx ->
       make-number-horz ctx sty width trailing-depth number)
-
-%  let make-context sty number-width ctx =
-%    let font-size = get-font-size ctx in
-%    let ctx = ctx
-%      |> set-paragraph-margin (font-size *' 0.25) 0pt
-%      |> set-min-gap-of-lines (font-size *' 0.)
-%      |> set-leading (font-size *' 1.)
-%    in
-%    let number-context = ctx
-%      |> set-font Latin (Option.from (get-font Latin ctx) sty#number-font)
-%    in
-%    let code-context =
-%      let ctx = ctx
-%        |> set-font Latin sty#code-font
-%        |> set-hyphen-penalty 100000
-%      in
-%      let ctx =
-%        let char-width = get-natural-width (read-inline ctx {0}) in
-%          ctx |> set-space-ratio (char-width /' font-size) 0. 0.
-%      in
-%      let horz-empty-number =
-%        let horz-number-sep-text =
-%          read-inline number-context sty#number-sep-text-trailing
-%        in
-%        inline-skip (number-width -' get-natural-width horz-number-sep-text)
-%          ++ horz-number-sep-text
-%      in
-%      ctx
-%        |> set-every-word-break inline-nil (horz-empty-number ++ inline-skip sty#code-sep)
-%
-%    in
-%    (number-context, code-context)
-
 
   let make-context sty number-width ctx =
     let font-size = get-font-size ctx in
@@ -245,25 +178,6 @@ end = struct
       number-width = number-width;
     |)
 
-
-%  let code-scheme pre ctx sty code =
-%    let (number-context, code-context) = make-context sty pre#number-width ctx in
-%    pre#code-lines
-%      |> drop-empty-lines
-%      |> List.mapi (fun number code-line -> (
-%        let horz-code-line =
-%          inline-skip (sty#code-sep) ++
-%            (code-line
-%              |> embed-string
-%              |> read-inline code-context)
-%        in
-%        let horz-number =
-%          make-number number-context sty pre#number-width number
-%        in
-%        line-break true true code-context
-%          (horz-number ++ horz-code-line ++ inline-fil)))
-%      |> List.fold-left (+++) block-nil
-
   let append-fil horz = horz ++ inline-fil
 
   let-rec resolve-wrap-method
@@ -279,12 +193,11 @@ end = struct
       |> drop-empty-lines
       |> List.mapi (fun number code-line -> (
         let horz-code-line =
-          code-line
-            |> resolve-wrap-method code-context sty#wrap-method
-            |> append-fil
-            |> line-break-subpage code-context
-                (get-text-width ctx -' pre#number-width)
-                  (sty#code-sep, sty#code-sep)
+          line-break-subpage code-context
+            (get-text-width ctx -' pre#number-width)
+              (sty#code-sep, sty#code-sep) (fun ctx ->
+                code-line |> resolve-wrap-method code-context sty#wrap-method
+                          |> append-fil)
         in
         let horz-number =
           let (_, _, trailing-depth) = get-natural-metrics horz-code-line in
