@@ -4,6 +4,8 @@
 @require: color
 @require: math
 @require: list
+@require: base/string
+@require: base/debug
 @import: sized-list
 @import: seqsplit
 
@@ -46,8 +48,8 @@ end = struct
     sep = 2pt;
     frame = VDecoSet.empty;
     wrap-method = Free;
-    number-sep = 0pt;
-    number-sep-text = {:\ };
+    number-sep = 7pt;
+    number-sep-text = {:};
     number-sep-text-trailing = {};
     number-font = None;
     number-frame = VDecoSet.empty;
@@ -96,14 +98,37 @@ end = struct
       |> List.map (read-inline ctx => get-natural-width)
       |> List.fold-left length-max 0pt
     in
-    digit-width *' float (string-length (arabic number))
+    let () = Debug.print (String.of-int number) in
+    let () = Debug.print (String.of-float (float (string-length (arabic number)))) in
+    let x = digit-width *' float (string-length (arabic number))
       +' get-natural-width (read-inline ctx sty#number-sep-text)
         +' sty#number-sep
+    in
+    let number = 10 in
+    let horz-leading =
+      let horz-number =
+        read-inline ctx (embed-string (arabic number)) ++ read-inline ctx sty#number-sep-text
+      in
+      inline-fil ++ horz-number
+    in
+    let () = Debug.print (`hl:` ^ String.of-length (get-natural-width horz-leading))
+    in
+    let () = Debug.print (`00{sep}skip:` ^ String.of-length x) in
+    let () =
+      let w = get-natural-width (inline-fil ++ read-inline ctx (embed-string (arabic 10)) ++ read-inline ctx sty#number-sep-text) in
+      Debug.print (`00{sep}:` ^ String.of-length w)
+    in x
 
-  let line-breake-subpage ctx width (padl, padr) horz =
+  let line-break-subpage ctx width (padl, padr) horz =
     inline-skip padl
       ++ embed-block-top ctx (width -' padl -' padr)
         (fun ctx -> line-break true true ctx horz)
+          ++ inline-skip padr
+
+  let line-break-subpage-2 ctx width (padl, padr) horz =
+    inline-skip padl
+      ++ embed-block-top ctx (width -' padl -' padr)
+        (fun ctx -> line-break true true ctx (horz ctx))
           ++ inline-skip padr
 
   let force-break ctx =
@@ -111,31 +136,33 @@ end = struct
       inline-nil
   %let force-break ctx = inline-nil
 
-  let make-number-vert ctx sty width trailing-depth number =
+  let make-number-horz ctx sty width trailing-depth number =
+    let () = Debug.print (`n` ^ String.of-int number)
+    in
     let horz-leading =
       let horz-number =
-        let a = embed-string (arabic number) in
-        let b = sty#number-sep-text in
-        read-inline ctx {#a;#b;}
+        read-inline ctx (embed-string (arabic number)) ++ read-inline ctx sty#number-sep-text
+        %let a = embed-string (arabic number) in
+        %let b = sty#number-sep-text in
+        %read-inline ctx {#a;#b;}
       in
-      inline-skip (width -' get-natural-width horz-number -' sty#number-sep)
-        ++ horz-number
-          ++ inline-skip sty#number-sep
+      inline-fil ++ horz-number
     in
     let horz-trailing =
       let horz-empty-number = read-inline ctx sty#number-sep-text-trailing in
-        inline-skip
-          (width -' get-natural-width horz-empty-number -' sty#number-sep)
-            ++ horz-empty-number ++ inline-skip sty#number-sep
+      inline-fil ++ horz-empty-number
     in
     let num-trailing = round (trailing-depth /' get-font-size ctx) in
-    fold-left-n num-trailing (+++) (line-break true true ctx horz-leading)
-      (line-break true true ctx horz-trailing)
+    let ( +/+ ) l r = l ++ force-break ctx ++ r in
+    let () = Debug.print (`text width:` ^ String.of-length (get-text-width ctx)) in
+    let () = Debug.print (`horz-leading:` ^ String.of-length (get-natural-width horz-leading)) in
+    let x = fold-left-n num-trailing (+/+) horz-leading horz-trailing
+    in x
 
   let make-number ctx sty width trailing-depth number =
-    embed-block-top ctx width (fun ctx ->
-      make-number-vert ctx sty width trailing-depth number)
-
+    let () = Debug.print (String.of-length width) in
+    line-break-subpage-2 ctx width (0pt, sty#number-sep) (fun ctx ->
+      make-number-horz ctx sty width trailing-depth number)
 
 %  let make-context sty number-width ctx =
 %    let font-size = get-font-size ctx in
@@ -255,7 +282,7 @@ end = struct
           code-line
             |> resolve-wrap-method code-context sty#wrap-method
             |> append-fil
-            |> line-breake-subpage code-context
+            |> line-break-subpage code-context
                 (get-text-width ctx -' pre#number-width)
                   (sty#code-sep, sty#code-sep)
         in
