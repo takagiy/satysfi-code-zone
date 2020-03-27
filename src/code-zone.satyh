@@ -148,14 +148,14 @@ end = struct
     | (head, Some(tail)) -> head +: string-lines tail
     | (head, None)       -> head +: nil
 
-  let-rec drop-empty-lines lst =
-  match lst with
-  | x :: xs ->
-      if string-length x == 0 then
-        drop-empty-lines xs
-      else
-        lst
-  | []      -> []
+  let drop-empty-line lns =
+    match lns with
+    | x :: xs ->
+        if string-length x == 0 then
+          xs
+        else
+          lns
+    | []      -> []
 
   let ( => ) f g x = g (f x)
 
@@ -267,7 +267,7 @@ end = struct
       make-context sty pre#number-width ctx
     in
     pre#code-lines
-      |> drop-empty-lines
+      |> drop-empty-line
       |> List.mapi (fun number code-line -> (
         let horz-code-line =
           line-break-subpage code-context
