@@ -41,54 +41,45 @@ module CodeZone : sig
 end = struct
   let quad x = (x, x, x, x)
 
+  let quad-map f (a, b, c, d) = (f a, f b, f c, f d)
+
   let quad-map2 f (a, b, c, d) (x, y, z, w) = (f a x, f b y, f c z, f d w)
 
-  let quad1 (a, _, _, _) = a
-
-  let quad2 (_, a, _, _) = a
-
-  let quad3 (_, _, a, _) = a
-
-  let quad4 (_, _, _, a) = a
-
   let frame width color edges =
-    let compound lst p w h d =
-      let apply (x, y) w h d f = f (x, y +' h) (x +' w, y -' d) in
+    let compound lst =
+      let none _ _ _ _ = [] in
+      let empty = quad none in
+      let apply f (x, y) w h d = f (x, y +' h) (x +' w, y -' d) in
       lst
-        |> List.map (apply p w h d)
-        |> List.fold-left (quad-map2 List.append) ([], [], [], [])
+        |> List.map (quad-map apply)
+        |> List.fold-left (quad-map2 (fun a b p w h d -> List.append (a p w h d) (b p w h d))) empty
     in
-    let select-compound lst =
-      let a p w h d = quad1 (compound lst p w h d) in
-      let b p w h d = quad2 (compound lst p w h d) in
-      let c p w h d = quad3 (compound lst p w h d) in
-      let d p w h d = quad4 (compound lst p w h d) in
-      (a, b, c, d)
-    in
+    let none _ _ = [] in
+    let empty = quad none in
     let draw p q = stroke width color (Gr.line p q) in
-    let edge-left (x0, y0) (x1, y1) =
+    let edge-left =
       if edges#left then
-        quad [draw (x0, y0) (x0, y1)]
-      else quad []
+        quad (fun (x0, y0) (x1, y1) -> [draw (x0, y0) (x0, y1)])
+      else empty
     in
-    let edge-right (x0, y0) (x1, y1) =
+    let edge-right =
       if edges#right then
-        quad [draw (x1, y0) (x1, y1)]
-      else quad []
+        quad (fun (x0, y0) (x1, y1) -> [draw (x1, y0) (x1, y1)])
+      else empty
     in
-    let edge-top (x0, y0) (x1, y1) =
+    let edge-top =
       if edges#top then
-        let e = [draw (x0, y0) (x1, y0)] in
-        (e, e, [], [])
-      else quad []
+        let e = (fun (x0, y0) (x1, y1) -> [draw (x0, y0) (x1, y0)]) in
+        (e, e, none, none)
+      else empty
     in
-    let edge-bottom (x0, y0) (x1, y1) =
+    let edge-bottom =
       if edges#bottom then
-        let e = [draw (x0, y1) (x1, y1)] in
-        (e, [], [], e)
-      else quad []
+        let e = (fun (x0, y0) (x1, y1) -> [draw (x0, y1) (x1, y1)]) in
+        (e, none, none, e)
+      else empty
     in
-    select-compound [
+    compound [
       edge-left;
       edge-right;
       edge-top;
