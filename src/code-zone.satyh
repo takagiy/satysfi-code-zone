@@ -202,6 +202,13 @@ end = struct
     line-break-subpage ctx width (0pt, sty#number-sep) (fun ctx ->
       make-number-horz ctx code-ctx sty width trailing-depth number)
 
+  let adjust-full-width-font-size script sample-letter half-char-width ctx =
+    let (fontname, r, rb) = get-font script ctx in
+    let full-char-width = get-natural-width (read-inline ctx sample-letter) in
+    ctx
+      |> set-font script
+        (fontname, r *. (half-char-width *' 2.) /' full-char-width, rb)
+
   let make-context sty number-width ctx =
     let font-size = get-font-size ctx in
     let ctx = ctx
@@ -221,7 +228,11 @@ end = struct
         |> set-hyphen-penalty 100000
       in
       let char-width = get-natural-width (read-inline ctx {0}) in
-      ctx |> set-space-ratio (char-width /' font-size) 0. 0.
+      ctx
+        |> set-space-ratio (char-width /' font-size) 0. 0.
+        |> adjust-full-width-font-size Kana {あ} char-width
+        |> adjust-full-width-font-size HanIdeographic {一} char-width
+
       %ctx |> set-space-ratio 0. 0. 0.
     in
     (number-context, code-context)
