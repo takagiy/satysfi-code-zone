@@ -5,7 +5,6 @@
 @require: list
 @require: gr
 @import: sized-list
-@import: seqsplit
 
 type code-zone-wrap-method =
   Textual | Free | WrapMethod of context -> string -> inline-boxes
@@ -223,6 +222,7 @@ end = struct
       in
       let char-width = get-natural-width (read-inline ctx {0}) in
       ctx |> set-space-ratio (char-width /' font-size) 0. 0.
+      %ctx |> set-space-ratio 0. 0. 0.
     in
     (number-context, code-context)
 
@@ -244,21 +244,51 @@ end = struct
       )
 
   let code-scheme-prior-info ctx sty code =
-    let (number-context, _) = make-context sty 0pt ctx in
+    let (number-context, code-context) = make-context sty 0pt ctx in
     let (code-line-count, code-lines) = string-lines code |> drop-empty-line in
     let number-width =
       get-number-width sty code-line-count number-context
     in
+    let code-char-width = get-natural-width (read-inline code-context {0}) in
     (|
       code-lines = code-lines;
       number-width = number-width;
+      code-char-width = code-char-width;
     |)
 
   let append-fil horz = horz ++ inline-fil
 
+  let wrap-paragraph-freely ctx raw-code =
+    let br = force-break ctx in
+
+    let text-width = get-text-width ctx in
+    let basic-len =
+      round (text-width /' get-natural-width (read-inline ctx {0}))
+    in
+
+    let-rec aux acc len code =
+      let (actual-len, stop) =
+        if (string-length code) > len then (len, false)
+        else (string-length code, true)
+      in
+      let c = string-sub code 0 actual-len in
+      let horz-c = read-inline ctx (embed-string c) in
+      let horz-c-width = get-natural-width horz-c in
+
+      if horz-c-width >' text-width then
+        aux acc (len - 1) code
+      else
+        let acc = acc ++ no-break (horz-c ++ inline-skip (text-width -' horz-c-width)) in
+        if stop then acc
+        else
+          aux (acc ++ br)
+            basic-len (string-sub code len (string-length code - len))
+    in
+    aux inline-nil basic-len raw-code
+
   let-rec resolve-wrap-method
     | ctx (Textual)       = embed-string => read-inline ctx
-    | ctx (Free)          = Seqsplit.embed-string-breakable ctx
+    | ctx (Free)          = wrap-paragraph-freely ctx
     | ctx (WrapMethod(m)) = m ctx
 
   let code-scheme pre ctx sty code =
@@ -272,7 +302,7 @@ end = struct
           line-break-subpage code-context
             (get-text-width ctx -' pre#number-width)
               (sty#code-sep, sty#code-sep) (fun ctx ->
-                code-line |> resolve-wrap-method code-context sty#wrap-method
+                code-line |> resolve-wrap-method ctx sty#wrap-method
                           |> append-fil)
         in
         let horz-number =
