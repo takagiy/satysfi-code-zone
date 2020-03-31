@@ -209,6 +209,15 @@ end = struct
       |> set-font script
         (fontname, r *. (half-char-width *' 2.) /' full-char-width, rb)
 
+  let unset-space-ratio-between-scripts ctx =
+    ctx
+      |> set-space-ratio-between-scripts 0. 0. 0. HanIdeographic Kana
+      |> set-space-ratio-between-scripts 0. 0. 0. Kana HanIdeographic
+      |> set-space-ratio-between-scripts 0. 0. 0. Kana Latin
+      |> set-space-ratio-between-scripts 0. 0. 0. Latin Kana
+      |> set-space-ratio-between-scripts 0. 0. 0. Latin HanIdeographic
+      |> set-space-ratio-between-scripts 0. 0. 0. HanIdeographic Latin
+
   let make-context sty number-width ctx =
     let font-size = get-font-size ctx in
     let ctx = ctx
@@ -226,6 +235,7 @@ end = struct
         |> set-font Latin sty#code-font
         |> set-text-color (Option.from (get-text-color ctx) sty#code-color)
         |> set-hyphen-penalty 100000
+        |> unset-space-ratio-between-scripts
       in
       let char-width = get-natural-width (read-inline ctx {0}) in
       ctx
